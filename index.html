@@ -141,7 +141,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
     <nav class="navtabs">
       <div class="ntab on" onclick="showTab('mylog',this)">📝 내 업무일지</div>
       <div class="ntab" id="tab-team-btn" onclick="showTab('team',this)">👥 팀원 업무</div>
-      <div class="ntab" id="tab-assign-btn" onclick="showTab('assign',this)">📤 업무 지시</div>
+      <div class="ntab" id="tab-assign-btn" onclick="showTab('assign',this)">🤝 업무협조</div>
       <div class="ntab" id="tab-report-btn" onclick="showTab('report',this)">📊 관리 리포트</div>
     </nav>
   </header>
@@ -149,6 +149,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
   <main class="main">
     <!-- 내 업무일지 -->
     <div id="tab-mylog">
+      <div class="card log-list-card" id="received-card" style="margin-bottom:16px;display:none">
+        <div class="log-list-hd"><span>🤝 나에게 요청된 업무협조</span></div>
+        <div id="received-list"><div class="loading-state">불러오는 중...</div></div>
+      </div>
       <div class="card log-add-card">
         <div style="font-size:14px;font-weight:700;margin-bottom:12px">📌 업무 등록</div>
         <div class="log-form">
@@ -163,7 +167,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
           <div>
             <label class="flabel">구분</label>
             <select class="select" id="my-cat" style="width:100%">
-              <option>일반</option><option>긴급</option><option>지시</option><option>정기</option><option>협업</option>
+              <option>일반</option><option>긴급</option><option>협조</option><option>정기</option><option>협업</option>
             </select>
           </div>
           <button class="btn" onclick="addMyTask()">+ 등록</button>
@@ -191,21 +195,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
       </div>
     </div>
 
-    <!-- 업무 지시 -->
+    <!-- 업무협조 -->
     <div id="tab-assign" class="hidden">
       <div class="assign-grid">
         <div class="card" style="padding:18px 20px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:12px">📤 업무 지시하기</div>
-          <label class="flabel">받는 사람 *</label>
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px">🤝 업무협조 요청하기</div>
+          <label class="flabel">협조 대상자 *</label>
           <select class="select" id="as-to" style="width:100%;margin-bottom:10px"></select>
           <label class="flabel">업무 내용 *</label>
-          <input class="input" id="as-content" placeholder="지시할 업무 내용" style="width:100%;margin-bottom:10px">
+          <input class="input" id="as-content" placeholder="요청할 업무 내용" style="width:100%;margin-bottom:10px">
           <label class="flabel">처리 기한 *</label>
           <input class="input" type="date" id="as-due" style="width:100%;margin-bottom:14px">
-          <button class="btn" onclick="addAssign()" style="width:100%">업무 지시하기</button>
+          <button class="btn" onclick="addAssign()" style="width:100%">업무협조 요청하기</button>
         </div>
         <div class="card log-list-card">
-          <div class="log-list-hd"><span>내가 지시한 업무</span></div>
+          <div class="log-list-hd"><span>내가 요청한 업무협조</span></div>
           <div id="assign-list"><div class="loading-state">불러오는 중...</div></div>
         </div>
       </div>
@@ -315,6 +319,7 @@ async function startApp(){
   await loadMyLogs();
   renderMyLog();
   populateAssignTo();
+  await loadReceivedAssigns();
 }
 
 async function loadAllUsers(){
@@ -459,7 +464,7 @@ async function loadTeamView(){
   }).join('');
 }
 
-// ══ 업무 지시 ══
+// ══ 업무협조 ══
 function populateAssignTo(){
   const sel = document.getElementById('as-to');
   const targets = getVisibleMembers().filter(u=>u.name!==currentUser.name);
@@ -472,7 +477,7 @@ async function loadAssignList(){
     assignedByMe = all.filter(a=>a.fromName===currentUser.name);
   }catch(e){ assignedByMe=[]; }
   const list = document.getElementById('assign-list');
-  if(!assignedByMe.length){ list.innerHTML='<div class="empty-state">아직 지시한 업무가 없습니다</div>'; return; }
+  if(!assignedByMe.length){ list.innerHTML='<div class="empty-state">아직 요청한 업무협조가 없습니다</div>'; return; }
   list.innerHTML = assignedByMe.sort((a,b)=>b.id-a.id).map(a=>{
     const isOverdue = a.status!=='완료' && a.due<today;
     const dot = a.status==='완료'?'#10B981':isOverdue?'#EF4444':'#3B82F6';
@@ -489,11 +494,45 @@ async function loadAssignList(){
   }).join('');
 }
 
+async function loadReceivedAssigns(){
+  let received = [];
+  try{
+    const all = await apiGet('지시업무');
+    received = all.filter(a=>a.toName===currentUser.name);
+  }catch(e){ received=[]; }
+  const card = document.getElementById('received-card');
+  const list = document.getElementById('received-list');
+  if(!received.length){ card.style.display='none'; return; }
+  card.style.display='block';
+  list.innerHTML = received.sort((a,b)=>b.id-a.id).map(a=>{
+    const isOverdue = a.status!=='완료' && a.due<today;
+    const dot = a.status==='완료'?'#10B981':isOverdue?'#EF4444':'#7C3AED';
+    return `<div class="log-entry">
+      <div class="ldot" style="background:${dot}"></div>
+      <div class="le-body">
+        <div class="le-title"><span class="le-owner" style="color:#7C3AED">${a.fromName} 요청</span>${a.content}</div>
+        <div class="le-meta">
+          <span>📅 ${a.due}</span>${isOverdue?'<span class="ov-badge">⚠ 기한초과</span>':''}
+          <span style="font-weight:700;color:${a.status==='완료'?'#059669':'#7C3AED'}">${a.status}</span>
+        </div>
+      </div>
+      <div class="le-actions">
+        ${a.status!=='완료'?`<button class="btn btn-sm" onclick="completeReceived('${a.id}')">완료</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function completeReceived(id){
+  await apiPost({action:'update', sheet:'지시업무', id:id, field:'status', value:'완료'});
+  await loadReceivedAssigns();
+}
+
 async function addAssign(){
   const toName = document.getElementById('as-to').value;
   const content = document.getElementById('as-content').value.trim();
   const due = document.getElementById('as-due').value;
-  if(!toName){alert('받는 사람을 선택하세요');return;}
+  if(!toName){alert('협조 대상자를 선택하세요');return;}
   if(!content){alert('업무 내용을 입력하세요');return;}
   if(!due){alert('처리 기한을 입력하세요');return;}
   const task = { id:Date.now(), fromName:currentUser.name, toName, content, due, status:'진행중', created:today };
