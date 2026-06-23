@@ -98,6 +98,13 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
 .rstat-val{font-size:16px;font-weight:900;}
 .rstat-label{font-size:9px;color:var(--muted);}
 
+.quad-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:800px){.quad-grid{grid-template-columns:1fr;}}
+.quad-card{background:var(--white);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--sh);overflow:hidden;}
+.quad-head{padding:10px 14px;font-size:12px;font-weight:800;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;}
+.quad-body{max-height:340px;overflow-y:auto;}
+.quad-empty{padding:18px;text-align:center;color:var(--muted);font-size:12px;}
+
 .hidden{display:none!important;}
 </style>
 </head>
@@ -167,15 +174,15 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
           <div>
             <label class="flabel">구분</label>
             <select class="select" id="my-cat" style="width:100%">
-              <option>일반</option><option>긴급</option><option>협조</option><option>정기</option><option>협업</option>
+              <option>우선</option><option selected>일반</option><option>정기(반복)</option><option>나중</option>
             </select>
           </div>
           <button class="btn" onclick="addMyTask()">+ 등록</button>
         </div>
       </div>
-      <div class="card log-list-card">
-        <div class="log-list-hd">
-          <span>내 업무 목록</span>
+      <div class="card" style="padding:14px 18px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700">내 업무 목록</span>
           <div class="lf-filters">
             <button class="lf-btn on" onclick="filterMyLog('all',this)">전체</button>
             <button class="lf-btn" onclick="filterMyLog('진행중',this)">진행중</button>
@@ -183,8 +190,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
             <button class="lf-btn" onclick="filterMyLog('미완료',this)">기한초과</button>
           </div>
         </div>
-        <div id="mylog-list"><div class="loading-state">불러오는 중...</div></div>
       </div>
+      <div class="quad-grid" id="mylog-quad"></div>
     </div>
 
     <!-- 팀원 업무 (파트장/팀장) -->
@@ -200,8 +207,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
       <div class="assign-grid">
         <div class="card" style="padding:18px 20px">
           <div style="font-size:14px;font-weight:700;margin-bottom:12px">🤝 업무협조 요청하기</div>
-          <label class="flabel">협조 대상자 *</label>
-          <select class="select" id="as-to" style="width:100%;margin-bottom:10px"></select>
+          <label class="flabel">협조 대상자 * (복수 선택 가능)</label>
+          <div id="as-to-checks" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px"></div>
           <label class="flabel">업무 내용 *</label>
           <input class="input" id="as-content" placeholder="요청할 업무 내용" style="width:100%;margin-bottom:10px">
           <label class="flabel">처리 기한 *</label>
@@ -229,7 +236,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;mi
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbxa3r61fRsh32EwBzRQRO5n--kh3OCXAut9h_01uLo9fwXz6nUScWoNhVJKQroqakAEBQ/exec';
 const today = new Date().toISOString().split('T')[0];
-const CAT_COLORS = {긴급:'#EF4444',지시:'#7C3AED',정기:'#0891B2',협업:'#DB2777',일반:'#64748B'};
+const CAT_COLORS = {우선:'#EF4444','정기(반복)':'#0891B2',나중:'#94A3B8',일반:'#2563EB'};
+const CAT_ORDER = ['우선','일반','정기(반복)','나중'];
 const ORG_COLORS = ['#0F766E','#0891B2','#7C3AED','#DB2777','#059669','#2563EB','#D97706'];
 
 let currentUser = null;
@@ -359,43 +367,50 @@ function filterMyLog(k, el){
 }
 
 function renderMyLog(){
-  const list = document.getElementById('mylog-list');
+  const quad = document.getElementById('mylog-quad');
   const filtered = myLogs.filter(t=>{
     if(myLogFilter==='all') return true;
     if(myLogFilter==='완료') return t.status==='완료';
     if(myLogFilter==='진행중') return t.status==='진행중';
     if(myLogFilter==='미완료') return t.status!=='완료' && t.due < today;
     return true;
-  }).sort((a,b)=> (a.status==='완료')-(b.status==='완료') || a.due.localeCompare(b.due));
+  });
 
-  if(!filtered.length){ list.innerHTML='<div class="empty-state">📭 등록된 업무가 없습니다</div>'; return; }
+  quad.innerHTML = CAT_ORDER.map(cat=>{
+    const items = filtered.filter(t=>t.category===cat)
+      .sort((a,b)=> (a.status==='완료')-(b.status==='완료') || String(a.due).localeCompare(String(b.due)));
+    const color = CAT_COLORS[cat];
+    const body = items.length ? items.map(t=>{
+      const isOverdue = t.status!=='완료' && t.due < today;
+      const dot = t.status==='완료'?'#10B981':isOverdue?'#EF4444':'#3B82F6';
+      const oc = parseInt(t.overdueCount)||0;
+      return `<div class="log-entry">
+        <div class="ldot" style="background:${dot}"></div>
+        <div class="le-body">
+          <div class="le-title">${t.content}</div>
+          <div class="le-meta">
+            <span>📅 ${t.due}</span>
+            ${isOverdue?'<span class="ov-badge">⚠ 기한초과</span>':''}
+            ${oc>0?`<span class="cnt-badge">재처리 ${oc}회</span>`:''}
+            <span style="font-weight:700;color:${t.status==='완료'?'#059669':'#2563EB'}">${t.status}</span>
+          </div>
+          <div class="reschedule-row" id="resched-${t.id}">
+            <input class="input" type="date" id="resched-date-${t.id}" style="font-size:12px;padding:5px 8px">
+            <button class="btn btn-sm" onclick="confirmReschedule('${t.id}')">재기한 설정</button>
+            <button class="btn-sm" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer" onclick="toggleResched('${t.id}')">취소</button>
+          </div>
+        </div>
+        <div class="le-actions">
+          ${t.status!=='완료'?`<button class="btn btn-sm" onclick="doneTask('${t.id}')">완료</button>`:''}
+          ${isOverdue?`<button class="btn-sm" style="background:#FEF3C7;color:#D97706;border:1px solid #FCD34D;border-radius:6px;cursor:pointer;font-weight:600" onclick="toggleResched('${t.id}')">기한 재설정</button>`:''}
+          <button class="btn-sm" style="background:#FEF2F2;color:#EF4444;border:1px solid #FCA5A5;border-radius:6px;cursor:pointer" onclick="delMyTask('${t.id}')">삭제</button>
+        </div>
+      </div>`;
+    }).join('') : `<div class="quad-empty">📭 ${cat} 업무가 없습니다</div>`;
 
-  list.innerHTML = filtered.map(t=>{
-    const isOverdue = t.status!=='완료' && t.due < today;
-    const dot = t.status==='완료'?'#10B981':isOverdue?'#EF4444':'#3B82F6';
-    const oc = parseInt(t.overdueCount)||0;
-    return `<div class="log-entry">
-      <div class="ldot" style="background:${dot}"></div>
-      <div class="le-body">
-        <div class="le-title">${t.content}</div>
-        <div class="le-meta">
-          <span>📅 ${t.due}</span>
-          ${isOverdue?'<span class="ov-badge">⚠ 기한초과</span>':''}
-          ${oc>0?`<span class="cnt-badge">재처리 ${oc}회</span>`:''}
-          <span style="color:${CAT_COLORS[t.category]||'#64748B'};font-weight:700">${t.category}</span>
-          <span style="font-weight:700;color:${t.status==='완료'?'#059669':'#2563EB'}">${t.status}</span>
-        </div>
-        <div class="reschedule-row" id="resched-${t.id}">
-          <input class="input" type="date" id="resched-date-${t.id}" style="font-size:12px;padding:5px 8px">
-          <button class="btn btn-sm" onclick="confirmReschedule('${t.id}')">재기한 설정</button>
-          <button class="btn-sm" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer" onclick="toggleResched('${t.id}')">취소</button>
-        </div>
-      </div>
-      <div class="le-actions">
-        ${t.status!=='완료'?`<button class="btn btn-sm" onclick="doneTask('${t.id}')">완료</button>`:''}
-        ${isOverdue?`<button class="btn-sm" style="background:#FEF3C7;color:#D97706;border:1px solid #FCD34D;border-radius:6px;cursor:pointer;font-weight:600" onclick="toggleResched('${t.id}')">기한 재설정</button>`:''}
-        <button class="btn-sm" style="background:#FEF2F2;color:#EF4444;border:1px solid #FCA5A5;border-radius:6px;cursor:pointer" onclick="delMyTask('${t.id}')">삭제</button>
-      </div>
+    return `<div class="quad-card">
+      <div class="quad-head" style="color:${color}"><span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>${cat} (${items.length})</div>
+      <div class="quad-body">${body}</div>
     </div>`;
   }).join('');
 }
@@ -447,28 +462,51 @@ async function loadTeamView(){
   if(!visible.length){ list.innerHTML='<div class="empty-state">조회 가능한 팀원이 없습니다</div>'; return; }
 
   list.innerHTML = visible.map(u=>{
-    const tasks = allLogs.filter(t=>t.name===u.name);
+    const tasks = allLogs.filter(t=>t.name===u.name).sort((a,b)=> (a.status==='완료')-(b.status==='완료') || String(a.due).localeCompare(String(b.due)));
     const done = tasks.filter(t=>t.status==='완료').length;
     const overdue = tasks.filter(t=>t.status!=='완료' && t.due<today).length;
     const c = colorFor(u.name);
-    return `<div class="log-entry">
-      <div class="ldot" style="background:${c}"></div>
-      <div class="le-body">
-        <div class="le-title">${u.name} <span style="font-size:11px;color:var(--muted);font-weight:400">${u.rank} · ${u.part}</span></div>
-        <div class="le-meta">
-          <span>총 ${tasks.length}건</span><span style="color:#059669">완료 ${done}</span>
-          <span style="color:${overdue>0?'#EF4444':'var(--muted)'}">기한초과 ${overdue}</span>
+    const taskRows = tasks.length ? tasks.map(t=>{
+      const isOverdue = t.status!=='완료' && t.due<today;
+      const dot = t.status==='완료'?'#10B981':isOverdue?'#EF4444':'#3B82F6';
+      const oc = parseInt(t.overdueCount)||0;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed var(--border)">
+        <div class="ldot" style="background:${dot};margin-top:0"></div>
+        <div style="flex:1;font-size:12px;${t.status==='완료'?'color:var(--muted);text-decoration:line-through':''}">${t.content}</div>
+        <span style="font-size:10px;color:var(--muted)">${t.due}</span>
+        ${isOverdue?'<span class="ov-badge">초과</span>':''}
+        ${oc>0?`<span class="cnt-badge">재처리${oc}</span>`:''}
+        <span style="font-size:10px;font-weight:700;color:${t.status==='완료'?'#059669':'#2563EB'}">${t.status}</span>
+      </div>`;
+    }).join('') : `<div style="font-size:12px;color:var(--muted);padding:6px 0">등록된 업무가 없습니다</div>`;
+
+    return `<div class="log-entry" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div class="ldot" style="background:${c};margin-top:0"></div>
+        <div style="flex:1">
+          <span style="font-size:13px;font-weight:700">${u.name}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:4px">${u.rank} · ${u.part}</span>
         </div>
+        <span style="font-size:11px">총 ${tasks.length}건</span>
+        <span style="font-size:11px;color:#059669">완료 ${done}</span>
+        <span style="font-size:11px;color:${overdue>0?'#EF4444':'var(--muted)'}">기한초과 ${overdue}</span>
       </div>
+      <div style="padding-left:20px">${taskRows}</div>
     </div>`;
   }).join('');
 }
 
 // ══ 업무협조 ══
 function populateAssignTo(){
-  const sel = document.getElementById('as-to');
-  const targets = getVisibleMembers().filter(u=>u.name!==currentUser.name);
-  sel.innerHTML = targets.map(u=>`<option value="${u.name}">${u.name} (${u.rank} · ${u.part})</option>`).join('');
+  const cont = document.getElementById('as-to-checks');
+  const targets = allUsers.filter(u=>u.name!==currentUser.name);
+  cont.innerHTML = targets.map(u=>{
+    const c = colorFor(u.name);
+    return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;border:1px solid var(--border);border-radius:14px;padding:4px 10px;cursor:pointer">
+      <input type="checkbox" value="${u.name}" class="as-to-cb" style="accent-color:${c}">
+      ${u.name} <span style="color:var(--muted);font-size:10px">${u.rank}·${u.part}</span>
+    </label>`;
+  }).join('');
 }
 
 async function loadAssignList(){
@@ -529,16 +567,19 @@ async function completeReceived(id){
 }
 
 async function addAssign(){
-  const toName = document.getElementById('as-to').value;
+  const checked = Array.from(document.querySelectorAll('.as-to-cb:checked')).map(c=>c.value);
   const content = document.getElementById('as-content').value.trim();
   const due = document.getElementById('as-due').value;
-  if(!toName){alert('협조 대상자를 선택하세요');return;}
+  if(!checked.length){alert('협조 대상자를 한 명 이상 선택하세요');return;}
   if(!content){alert('업무 내용을 입력하세요');return;}
   if(!due){alert('처리 기한을 입력하세요');return;}
-  const task = { id:Date.now(), fromName:currentUser.name, toName, content, due, status:'진행중', created:today };
-  await apiPost({action:'add', sheet:'지시업무', data:task});
+  for(const toName of checked){
+    const task = { id:Date.now()+Math.floor(Math.random()*1000), fromName:currentUser.name, toName, content, due, status:'진행중', created:today };
+    await apiPost({action:'add', sheet:'지시업무', data:task});
+  }
   document.getElementById('as-content').value='';
   document.getElementById('as-due').value=today;
+  document.querySelectorAll('.as-to-cb:checked').forEach(c=>c.checked=false);
   await loadAssignList();
 }
 
