@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRADCLUB 팀 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0F172A; --mid:#334155; --muted:#64748B; --border:#E2E8F0; --bg:#F8FAFC; --white:#fff;
+  --r:12px; --sh:0 2px 16px rgba(0,0,0,0.07);
+  --c1:#0F766E; --c1l:#CCFBF1; --c2:#0891B2; --c2l:#CFFAFE; --c3:#7C3AED; --c3l:#EDE9FE;
+  --c4:#DB2777; --c4l:#FCE7F3; --c5:#059669; --c5l:#D1FAE5;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:#1E293B;min-height:100vh;}
+
+/* ══ Login ══ */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 100%);}
+.login-box{background:var(--white);border-radius:16px;padding:40px 36px;width:360px;box-shadow:0 24px 60px rgba(0,0,0,0.3);}
+.login-title{font-size:20px;font-weight:900;color:var(--navy);text-align:center;margin-bottom:4px;}
+.login-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:28px;}
+.login-field{margin-bottom:14px;}
+.login-label{font-size:12px;font-weight:600;color:var(--mid);margin-bottom:5px;display:block;}
+.login-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:border .15s;}
+.login-input:focus{border-color:#3B82F6;}
+.login-btn{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;transition:background .15s;}
+.login-btn:hover{background:#2563EB;}
+.login-btn:disabled{background:#94A3B8;cursor:default;}
+.login-error{color:#EF4444;font-size:12px;margin-top:10px;text-align:center;display:none;}
+.login-loading{text-align:center;color:var(--muted);font-size:12px;margin-top:10px;display:none;}
+
+/* ══ App ══ */
+#app-screen{display:none;}
+.hd{background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 100%);padding:18px 32px 0;position:sticky;top:0;z-index:200;}
+.hd-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.hd-left{display:flex;align-items:center;gap:14px;}
+.hd-title{font-size:17px;font-weight:900;color:#fff;}
+.hd-user{display:flex;align-items:center;gap:10px;}
+.hd-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;background:rgba(255,255,255,0.2);}
+.hd-uname{font-size:13px;font-weight:700;color:#fff;}
+.hd-urole{font-size:10px;color:#94A3B8;}
+.hd-logout{padding:6px 14px;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s;}
+.hd-logout:hover{background:rgba(255,255,255,0.2);}
+.navtabs{display:flex;margin-top:14px;overflow-x:auto;}
+.ntab{padding:10px 18px;font-size:13px;font-weight:500;color:#94A3B8;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;}
+.ntab.on{color:#fff;border-bottom-color:#38BDF8;}
+.ntab:hover{color:#CBD5E1;}
+.main{padding:22px 32px;}
+
+/* ══ Common ══ */
+.card{background:var(--white);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--sh);}
+.btn{padding:8px 16px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;}
+.btn:hover{background:#2563EB;}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px;}
+.input{padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;outline:none;}
+.input:focus{border-color:#3B82F6;}
+.select{padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;background:#fff;}
+.pill{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;}
+.empty-state{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+.loading-state{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+
+/* ══ 업무일지 탭 ══ */
+.log-add-card{padding:18px 20px;margin-bottom:16px;}
+.log-form{display:grid;grid-template-columns:1fr 150px 110px auto;gap:10px;align-items:end;}
+.log-form-full{grid-column:1/-1;}
+.flabel{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block;}
+.log-list-card{overflow:hidden;}
+.log-list-hd{padding:14px 18px;font-size:13px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.lf-filters{display:flex;gap:6px;margin-left:auto;}
+.lf-btn{padding:4px 11px;border-radius:14px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--mid);transition:all .13s;font-family:inherit;}
+.lf-btn.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.log-entry{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;}
+.log-entry:last-child{border-bottom:none;}
+.ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.le-body{flex:1;min-width:0;}
+.le-title{font-size:13px;font-weight:600;margin-bottom:4px;}
+.le-owner{font-size:11px;color:#3B82F6;font-weight:700;margin-right:6px;}
+.le-meta{font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.le-actions{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;}
+.ov-badge{background:#FEF2F2;color:#EF4444;font-size:10px;padding:1px 6px;border-radius:7px;font-weight:700;}
+.cnt-badge{background:#FEF3C7;color:#D97706;font-size:10px;padding:1px 7px;border-radius:9px;font-weight:800;}
+.reschedule-row{display:none;gap:8px;margin-top:8px;align-items:center;background:#FFFBEB;padding:8px 10px;border-radius:7px;}
+.reschedule-row.show{display:flex;}
+
+/* ══ 업무지시 탭 ══ */
+.assign-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media(max-width:900px){.assign-grid{grid-template-columns:1fr;}}
+
+/* ══ 리포트 탭 ══ */
+.report-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
+.report-card{padding:16px;}
+.report-card-head{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+.report-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;}
+.report-name{font-size:13px;font-weight:700;}
+.report-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.rstat{text-align:center;background:var(--bg);border-radius:7px;padding:7px 4px;}
+.rstat-val{font-size:16px;font-weight:900;}
+.rstat-label{font-size:9px;color:var(--muted);}
+
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ 로그인 화면 ══════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-title">🏷️ TRADCLUB 팀 시스템</div>
+    <div class="login-sub">로그인하여 본인 업무를 관리하세요</div>
+    <div class="login-field">
+      <label class="login-label">이름</label>
+      <input class="login-input" id="li-name" placeholder="예: 홍철호" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label class="login-label">비밀번호</label>
+      <input class="login-input" id="li-pw" type="password" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" id="li-btn" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="li-error"></div>
+    <div class="login-loading" id="li-loading">로그인 중...</div>
+  </div>
+</div>
+
+<!-- ══════════════ 메인 앱 ══════════════ -->
+<div id="app-screen">
+  <header class="hd">
+    <div class="hd-row">
+      <div class="hd-left">
+        <div class="hd-title">🏷️ TRADCLUB 팀 시스템</div>
+      </div>
+      <div class="hd-user">
+        <div class="hd-av" id="hd-av"></div>
+        <div>
+          <div class="hd-uname" id="hd-uname"></div>
+          <div class="hd-urole" id="hd-urole"></div>
+        </div>
+        <button class="hd-logout" onclick="doLogout()">로그아웃</button>
+      </div>
+    </div>
+    <nav class="navtabs">
+      <div class="ntab on" onclick="showTab('mylog',this)">📝 내 업무일지</div>
+      <div class="ntab" id="tab-team-btn" onclick="showTab('team',this)">👥 팀원 업무</div>
+      <div class="ntab" id="tab-assign-btn" onclick="showTab('assign',this)">📤 업무 지시</div>
+      <div class="ntab" id="tab-report-btn" onclick="showTab('report',this)">📊 관리 리포트</div>
+    </nav>
+  </header>
+
+  <main class="main">
+    <!-- 내 업무일지 -->
+    <div id="tab-mylog">
+      <div class="card log-add-card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">📌 업무 등록</div>
+        <div class="log-form">
+          <div class="log-form-full">
+            <label class="flabel">업무 내용 *</label>
+            <input class="input" id="my-content" placeholder="처리할 업무 내용을 입력하세요" style="width:100%">
+          </div>
+          <div>
+            <label class="flabel">처리 기한 *</label>
+            <input class="input" type="date" id="my-due" style="width:100%">
+          </div>
+          <div>
+            <label class="flabel">구분</label>
+            <select class="select" id="my-cat" style="width:100%">
+              <option>일반</option><option>긴급</option><option>지시</option><option>정기</option><option>협업</option>
+            </select>
+          </div>
+          <button class="btn" onclick="addMyTask()">+ 등록</button>
+        </div>
+      </div>
+      <div class="card log-list-card">
+        <div class="log-list-hd">
+          <span>내 업무 목록</span>
+          <div class="lf-filters">
+            <button class="lf-btn on" onclick="filterMyLog('all',this)">전체</button>
+            <button class="lf-btn" onclick="filterMyLog('진행중',this)">진행중</button>
+            <button class="lf-btn" onclick="filterMyLog('완료',this)">완료</button>
+            <button class="lf-btn" onclick="filterMyLog('미완료',this)">기한초과</button>
+          </div>
+        </div>
+        <div id="mylog-list"><div class="loading-state">불러오는 중...</div></div>
+      </div>
+    </div>
+
+    <!-- 팀원 업무 (파트장/팀장) -->
+    <div id="tab-team" class="hidden">
+      <div class="card log-list-card">
+        <div class="log-list-hd"><span id="team-title">팀원 업무 현황</span></div>
+        <div id="team-list"><div class="loading-state">불러오는 중...</div></div>
+      </div>
+    </div>
+
+    <!-- 업무 지시 -->
+    <div id="tab-assign" class="hidden">
+      <div class="assign-grid">
+        <div class="card" style="padding:18px 20px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px">📤 업무 지시하기</div>
+          <label class="flabel">받는 사람 *</label>
+          <select class="select" id="as-to" style="width:100%;margin-bottom:10px"></select>
+          <label class="flabel">업무 내용 *</label>
+          <input class="input" id="as-content" placeholder="지시할 업무 내용" style="width:100%;margin-bottom:10px">
+          <label class="flabel">처리 기한 *</label>
+          <input class="input" type="date" id="as-due" style="width:100%;margin-bottom:14px">
+          <button class="btn" onclick="addAssign()" style="width:100%">업무 지시하기</button>
+        </div>
+        <div class="card log-list-card">
+          <div class="log-list-hd"><span>내가 지시한 업무</span></div>
+          <div id="assign-list"><div class="loading-state">불러오는 중...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 관리 리포트 -->
+    <div id="tab-report" class="hidden">
+      <div class="report-grid" id="report-grid"></div>
+      <div class="card log-list-card">
+        <div class="log-list-hd"><span>전체 기한초과 이력 (인사평가 참고용)</span></div>
+        <div id="report-overdue-list"><div class="loading-state">불러오는 중...</div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbxa3r61fRsh32EwBzRQRO5n--kh3OCXAut9h_01uLo9fwXz6nUScWoNhVJKQroqakAEBQ/exec';
+const today = new Date().toISOString().split('T')[0];
+const CAT_COLORS = {긴급:'#EF4444',지시:'#7C3AED',정기:'#0891B2',협업:'#DB2777',일반:'#64748B'};
+const ORG_COLORS = ['#0F766E','#0891B2','#7C3AED','#DB2777','#059669','#2563EB','#D97706'];
+
+let currentUser = null;
+let allUsers = [];
+let myLogs = [];
+let allLogs = [];
+let assignedByMe = [];
+let myLogFilter = 'all';
+
+function colorFor(name){
+  let h=0; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h);
+  return ORG_COLORS[Math.abs(h)%ORG_COLORS.length];
+}
+
+// ══ API helpers ══
+async function apiGet(sheet, extra=''){
+  const r = await fetch(`${API}?action=get&sheet=${encodeURIComponent(sheet)}${extra}`);
+  return await r.json();
+}
+async function apiPost(body){
+  const r = await fetch(API, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(body)
+  });
+  return await r.json();
+}
+async function apiLogin(name, pw){
+  const r = await fetch(`${API}?action=login&name=${encodeURIComponent(name)}&password=${encodeURIComponent(pw)}`);
+  return await r.json();
+}
+
+// ══ Login ══
+async function doLogin(){
+  const name = document.getElementById('li-name').value.trim();
+  const pw = document.getElementById('li-pw').value.trim();
+  const err = document.getElementById('li-error');
+  const loading = document.getElementById('li-loading');
+  const btn = document.getElementById('li-btn');
+  err.style.display='none';
+  if(!name || !pw){ err.textContent='이름과 비밀번호를 입력하세요'; err.style.display='block'; return; }
+  btn.disabled=true; loading.style.display='block';
+  try{
+    const res = await apiLogin(name, pw);
+    if(res.ok){
+      currentUser = res.user;
+      localStorage.setItem('tc-user', JSON.stringify(currentUser));
+      startApp();
+    } else {
+      err.textContent = res.error || '로그인에 실패했습니다';
+      err.style.display='block';
+    }
+  }catch(e){
+    err.textContent = 'API 연결에 실패했습니다. 잠시 후 다시 시도해주세요';
+    err.style.display='block';
+  }
+  btn.disabled=false; loading.style.display='none';
+}
+function doLogout(){
+  localStorage.removeItem('tc-user');
+  currentUser=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('li-name').value='';
+  document.getElementById('li-pw').value='';
+}
+
+// ══ Start App ══
+async function startApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  const c = colorFor(currentUser.name);
+  document.getElementById('hd-av').textContent = currentUser.name[0];
+  document.getElementById('hd-av').style.background = c;
+  document.getElementById('hd-uname').textContent = `${currentUser.name} ${currentUser.rank}`;
+  document.getElementById('hd-urole').textContent = `${currentUser.org} · ${currentUser.part} · ${currentUser.role}`;
+  document.getElementById('my-due').value = today;
+  document.getElementById('as-due').value = today;
+
+  // 권한별 탭 표시
+  const role = currentUser.role;
+  document.getElementById('tab-team-btn').classList.toggle('hidden', role==='개인');
+  document.getElementById('tab-assign-btn').classList.toggle('hidden', role==='개인');
+  document.getElementById('tab-report-btn').classList.toggle('hidden', role!=='팀장');
+
+  await loadAllUsers();
+  await loadMyLogs();
+  renderMyLog();
+  populateAssignTo();
+}
+
+async function loadAllUsers(){
+  try{ allUsers = await apiGet('사용자정보'); }catch(e){ allUsers=[]; }
+}
+
+// ══ 내 업무일지 ══
+async function loadMyLogs(){
+  try{
+    const all = await apiGet('업무일지');
+    myLogs = all.filter(t=>t.name===currentUser.name);
+  }catch(e){ myLogs=[]; }
+}
+
+async function addMyTask(){
+  const content = document.getElementById('my-content').value.trim();
+  const due = document.getElementById('my-due').value;
+  const cat = document.getElementById('my-cat').value;
+  if(!content){alert('업무 내용을 입력하세요');return;}
+  if(!due){alert('처리 기한을 입력하세요');return;}
+  const task = {
+    id: Date.now(), name: currentUser.name, content, due, category: cat,
+    status:'진행중', created: today, overdueCount: 0, rescheduleHistory: ''
+  };
+  await apiPost({action:'add', sheet:'업무일지', data:task});
+  document.getElementById('my-content').value='';
+  document.getElementById('my-due').value=today;
+  await loadMyLogs();
+  renderMyLog();
+}
+
+function filterMyLog(k, el){
+  myLogFilter = k;
+  document.querySelectorAll('#tab-mylog .lf-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  renderMyLog();
+}
+
+function renderMyLog(){
+  const list = document.getElementById('mylog-list');
+  const filtered = myLogs.filter(t=>{
+    if(myLogFilter==='all') return true;
+    if(myLogFilter==='완료') return t.status==='완료';
+    if(myLogFilter==='진행중') return t.status==='진행중';
+    if(myLogFilter==='미완료') return t.status!=='완료' && t.due < today;
+    return true;
+  }).sort((a,b)=> (a.status==='완료')-(b.status==='완료') || a.due.localeCompare(b.due));
+
+  if(!filtered.length){ list.innerHTML='<div class="empty-state">📭 등록된 업무가 없습니다</div>'; return; }
+
+  list.innerHTML = filtered.map(t=>{
+    const isOverdue = t.status!=='완료' && t.due < today;
+    const dot = t.status==='완료'?'#10B981':isOverdue?'#EF4444':'#3B82F6';
+    const oc = parseInt(t.overdueCount)||0;
+    return `<div class="log-entry">
+      <div class="ldot" style="background:${dot}"></div>
+      <div class="le-body">
+        <div class="le-title">${t.content}</div>
+        <div class="le-meta">
+          <span>📅 ${t.due}</span>
+          ${isOverdue?'<span class="ov-badge">⚠ 기한초과</span>':''}
+          ${oc>0?`<span class="cnt-badge">재처리 ${oc}회</span>`:''}
+          <span style="color:${CAT_COLORS[t.category]||'#64748B'};font-weight:700">${t.category}</span>
+          <span style="font-weight:700;color:${t.status==='완료'?'#059669':'#2563EB'}">${t.status}</span>
+        </div>
+        <div class="reschedule-row" id="resched-${t.id}">
+          <input class="input" type="date" id="resched-date-${t.id}" style="font-size:12px;padding:5px 8px">
+          <button class="btn btn-sm" onclick="confirmReschedule('${t.id}')">재기한 설정</button>
+          <button class="btn-sm" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer" onclick="toggleResched('${t.id}')">취소</button>
+        </div>
+      </div>
+      <div class="le-actions">
+        ${t.status!=='완료'?`<button class="btn btn-sm" onclick="doneTask('${t.id}')">완료</button>`:''}
+        ${isOverdue?`<button class="btn-sm" style="background:#FEF3C7;color:#D97706;border:1px solid #FCD34D;border-radius:6px;cursor:pointer;font-weight:600" onclick="toggleResched('${t.id}')">기한 재설정</button>`:''}
+        <button class="btn-sm" style="background:#FEF2F2;color:#EF4444;border:1px solid #FCA5A5;border-radius:6px;cursor:pointer" onclick="delMyTask('${t.id}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleResched(id){
+  const row = document.getElementById('resched-'+id);
+  row.classList.toggle('show');
+  if(row.classList.contains('show')) document.getElementById('resched-date-'+id).value=today;
+}
+
+async function confirmReschedule(id){
+  const newDate = document.getElementById('resched-date-'+id).value;
+  if(!newDate){ alert('새 처리기한을 선택하세요'); return; }
+  const t = myLogs.find(x=>String(x.id)===String(id));
+  if(!t) return;
+  const newCount = (parseInt(t.overdueCount)||0) + 1;
+  const history = (t.rescheduleHistory||'') + `[${t.due}→${newDate}] `;
+  await apiPost({action:'update', sheet:'업무일지', id:id, field:'due', value:newDate});
+  await apiPost({action:'update', sheet:'업무일지', id:id, field:'overdueCount', value:newCount});
+  await apiPost({action:'update', sheet:'업무일지', id:id, field:'rescheduleHistory', value:history});
+  await loadMyLogs();
+  renderMyLog();
+}
+
+async function doneTask(id){
+  await apiPost({action:'update', sheet:'업무일지', id:id, field:'status', value:'완료'});
+  await loadMyLogs();
+  renderMyLog();
+}
+async function delMyTask(id){
+  await apiPost({action:'delete', sheet:'업무일지', id:id});
+  await loadMyLogs();
+  renderMyLog();
+}
+
+// ══ 팀원 업무 보기 (권한별) ══
+function getVisibleMembers(){
+  if(currentUser.role==='팀장') return allUsers;
+  if(currentUser.role==='파트장') return allUsers.filter(u=>u.part===currentUser.part);
+  return [currentUser];
+}
+
+async function loadTeamView(){
+  try{ allLogs = await apiGet('업무일지'); }catch(e){ allLogs=[]; }
+  const visible = getVisibleMembers().filter(u=>u.name!==currentUser.name);
+  document.getElementById('team-title').textContent =
+    currentUser.role==='팀장' ? '전체 팀원 업무 현황' : `${currentUser.part} 파트원 업무 현황`;
+  const list = document.getElementById('team-list');
+  if(!visible.length){ list.innerHTML='<div class="empty-state">조회 가능한 팀원이 없습니다</div>'; return; }
+
+  list.innerHTML = visible.map(u=>{
+    const tasks = allLogs.filter(t=>t.name===u.name);
+    const done = tasks.filter(t=>t.status==='완료').length;
+    const overdue = tasks.filter(t=>t.status!=='완료' && t.due<today).length;
+    const c = colorFor(u.name);
+    return `<div class="log-entry">
+      <div class="ldot" style="background:${c}"></div>
+      <div class="le-body">
+        <div class="le-title">${u.name} <span style="font-size:11px;color:var(--muted);font-weight:400">${u.rank} · ${u.part}</span></div>
+        <div class="le-meta">
+          <span>총 ${tasks.length}건</span><span style="color:#059669">완료 ${done}</span>
+          <span style="color:${overdue>0?'#EF4444':'var(--muted)'}">기한초과 ${overdue}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══ 업무 지시 ══
+function populateAssignTo(){
+  const sel = document.getElementById('as-to');
+  const targets = getVisibleMembers().filter(u=>u.name!==currentUser.name);
+  sel.innerHTML = targets.map(u=>`<option value="${u.name}">${u.name} (${u.rank} · ${u.part})</option>`).join('');
+}
+
+async function loadAssignList(){
+  try{
+    const all = await apiGet('지시업무');
+    assignedByMe = all.filter(a=>a.fromName===currentUser.name);
+  }catch(e){ assignedByMe=[]; }
+  const list = document.getElementById('assign-list');
+  if(!assignedByMe.length){ list.innerHTML='<div class="empty-state">아직 지시한 업무가 없습니다</div>'; return; }
+  list.innerHTML = assignedByMe.sort((a,b)=>b.id-a.id).map(a=>{
+    const isOverdue = a.status!=='완료' && a.due<today;
+    const dot = a.status==='완료'?'#10B981':isOverdue?'#EF4444':'#3B82F6';
+    return `<div class="log-entry">
+      <div class="ldot" style="background:${dot}"></div>
+      <div class="le-body">
+        <div class="le-title"><span class="le-owner">${a.toName}</span>${a.content}</div>
+        <div class="le-meta">
+          <span>📅 ${a.due}</span>${isOverdue?'<span class="ov-badge">⚠ 기한초과</span>':''}
+          <span style="font-weight:700;color:${a.status==='완료'?'#059669':'#2563EB'}">${a.status}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addAssign(){
+  const toName = document.getElementById('as-to').value;
+  const content = document.getElementById('as-content').value.trim();
+  const due = document.getElementById('as-due').value;
+  if(!toName){alert('받는 사람을 선택하세요');return;}
+  if(!content){alert('업무 내용을 입력하세요');return;}
+  if(!due){alert('처리 기한을 입력하세요');return;}
+  const task = { id:Date.now(), fromName:currentUser.name, toName, content, due, status:'진행중', created:today };
+  await apiPost({action:'add', sheet:'지시업무', data:task});
+  document.getElementById('as-content').value='';
+  document.getElementById('as-due').value=today;
+  await loadAssignList();
+}
+
+// ══ 관리 리포트 (팀장만) ══
+async function loadReport(){
+  const [logs, assigns] = await Promise.all([
+    apiGet('업무일지').catch(()=>[]),
+    apiGet('지시업무').catch(()=>[])
+  ]);
+  allLogs = logs;
+  const grid = document.getElementById('report-grid');
+  grid.innerHTML = allUsers.map(u=>{
+    const tasks = logs.filter(t=>t.name===u.name);
+    const done = tasks.filter(t=>t.status==='완료').length;
+    const overdue = tasks.filter(t=>t.status!=='완료' && t.due<today).length;
+    const totalReschedule = tasks.reduce((s,t)=>s+(parseInt(t.overdueCount)||0),0);
+    const c = colorFor(u.name);
+    return `<div class="card report-card">
+      <div class="report-card-head">
+        <div class="report-av" style="background:${c}">${u.name[0]}</div>
+        <div><div class="report-name">${u.name} ${u.rank}</div><div style="font-size:10px;color:var(--muted)">${u.part}</div></div>
+      </div>
+      <div class="report-stats">
+        <div class="rstat"><div class="rstat-val" style="color:#2563EB">${tasks.length}</div><div class="rstat-label">총 업무</div></div>
+        <div class="rstat"><div class="rstat-val" style="color:#059669">${done}</div><div class="rstat-label">완료</div></div>
+        <div class="rstat"><div class="rstat-val" style="color:#EF4444">${overdue}</div><div class="rstat-label">기한초과</div></div>
+      </div>
+      ${totalReschedule>0?`<div style="margin-top:8px;text-align:center"><span class="cnt-badge">누적 재처리 ${totalReschedule}회 (인사평가 참고)</span></div>`:''}
+    </div>`;
+  }).join('');
+
+  // 기한초과 이력
+  const overdueList = document.getElementById('report-overdue-list');
+  const overdueTasks = logs.filter(t=>(parseInt(t.overdueCount)||0)>0).sort((a,b)=>(parseInt(b.overdueCount)||0)-(parseInt(a.overdueCount)||0));
+  if(!overdueTasks.length){ overdueList.innerHTML='<div class="empty-state">기한초과 이력이 없습니다 👍</div>'; return; }
+  overdueList.innerHTML = overdueTasks.map(t=>`
+    <div class="log-entry">
+      <div class="ldot" style="background:#EF4444"></div>
+      <div class="le-body">
+        <div class="le-title"><span class="le-owner">${t.name}</span>${t.content}</div>
+        <div class="le-meta">
+          <span class="cnt-badge">재처리 ${t.overdueCount}회</span>
+          <span>현재기한: ${t.due}</span>
+          <span style="color:var(--muted)">${t.rescheduleHistory||''}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ══ Tabs ══
+async function showTab(name, el){
+  ['mylog','team','assign','report'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  el.classList.add('on');
+  if(name==='team') await loadTeamView();
+  if(name==='assign') await loadAssignList();
+  if(name==='report') await loadReport();
+}
+
+// ══ Auto-login from localStorage ══
+(function(){
+  const saved = localStorage.getItem('tc-user');
+  if(saved){
+    try{ currentUser = JSON.parse(saved); startApp(); }catch(e){}
+  }
+})();
+</script>
+</body>
+</html>
