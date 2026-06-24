@@ -387,7 +387,7 @@ function renderMyLog(){
       return `<div class="log-entry">
         <div class="ldot" style="background:${dot}"></div>
         <div class="le-body">
-          <div class="le-title">${t.content}</div>
+          <div class="le-title" id="title-${t.id}">${t.content}</div>
           <div class="le-meta">
             <span>📅 ${t.due}</span>
             ${isOverdue?'<span class="ov-badge">⚠ 기한초과</span>':''}
@@ -399,10 +399,19 @@ function renderMyLog(){
             <button class="btn btn-sm" onclick="confirmReschedule('${t.id}')">재기한 설정</button>
             <button class="btn-sm" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer" onclick="toggleResched('${t.id}')">취소</button>
           </div>
+          <div class="reschedule-row" id="edit-${t.id}">
+            <input class="input" id="edit-content-${t.id}" style="font-size:12px;padding:5px 8px;flex:1" value="${t.content.replace(/"/g,'&quot;')}">
+            <select class="select" id="edit-cat-${t.id}" style="font-size:12px;padding:5px 6px">
+              ${CAT_ORDER.map(c=>`<option ${c===t.category?'selected':''}>${c}</option>`).join('')}
+            </select>
+            <button class="btn btn-sm" onclick="saveMyTaskEdit('${t.id}')">저장</button>
+            <button class="btn-sm" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer" onclick="toggleEdit('${t.id}')">취소</button>
+          </div>
         </div>
         <div class="le-actions">
           ${t.status!=='완료'?`<button class="btn btn-sm" onclick="doneTask('${t.id}')">완료</button>`:''}
           ${isOverdue?`<button class="btn-sm" style="background:#FEF3C7;color:#D97706;border:1px solid #FCD34D;border-radius:6px;cursor:pointer;font-weight:600" onclick="toggleResched('${t.id}')">기한 재설정</button>`:''}
+          <button class="btn-sm" style="background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;border-radius:6px;cursor:pointer" onclick="toggleEdit('${t.id}')">수정</button>
           <button class="btn-sm" style="background:#FEF2F2;color:#EF4444;border:1px solid #FCA5A5;border-radius:6px;cursor:pointer" onclick="delMyTask('${t.id}')">삭제</button>
         </div>
       </div>`;
@@ -431,6 +440,21 @@ async function confirmReschedule(id){
   await apiPost({action:'update', sheet:'업무일지', id:id, field:'due', value:newDate});
   await apiPost({action:'update', sheet:'업무일지', id:id, field:'overdueCount', value:newCount});
   await apiPost({action:'update', sheet:'업무일지', id:id, field:'rescheduleHistory', value:history});
+  await loadMyLogs();
+  renderMyLog();
+}
+
+function toggleEdit(id){
+  const row = document.getElementById('edit-'+id);
+  row.classList.toggle('show');
+}
+
+async function saveMyTaskEdit(id){
+  const newContent = document.getElementById('edit-content-'+id).value.trim();
+  const newCat = document.getElementById('edit-cat-'+id).value;
+  if(!newContent){ alert('업무 내용을 입력하세요'); return; }
+  await apiPost({action:'update', sheet:'업무일지', id:id, field:'content', value:newContent});
+  await apiPost({action:'update', sheet:'업무일지', id:id, field:'category', value:newCat});
   await loadMyLogs();
   renderMyLog();
 }
@@ -527,9 +551,38 @@ async function loadAssignList(){
           <span>📅 ${a.due}</span>${isOverdue?'<span class="ov-badge">⚠ 기한초과</span>':''}
           <span style="font-weight:700;color:${a.status==='완료'?'#059669':'#2563EB'}">${a.status}</span>
         </div>
+        <div class="reschedule-row" id="as-edit-${a.id}">
+          <input class="input" id="as-edit-content-${a.id}" style="font-size:12px;padding:5px 8px;flex:1" value="${a.content.replace(/"/g,'&quot;')}">
+          <input class="input" type="date" id="as-edit-due-${a.id}" value="${a.due}" style="font-size:12px;padding:5px 8px">
+          <button class="btn btn-sm" onclick="saveAssignEdit('${a.id}')">저장</button>
+          <button class="btn-sm" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer" onclick="toggleAssignEdit('${a.id}')">취소</button>
+        </div>
+      </div>
+      <div class="le-actions">
+        <button class="btn-sm" style="background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;border-radius:6px;cursor:pointer" onclick="toggleAssignEdit('${a.id}')">수정</button>
+        <button class="btn-sm" style="background:#FEF2F2;color:#EF4444;border:1px solid #FCA5A5;border-radius:6px;cursor:pointer" onclick="delAssign('${a.id}')">삭제</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function toggleAssignEdit(id){
+  document.getElementById('as-edit-'+id).classList.toggle('show');
+}
+
+async function saveAssignEdit(id){
+  const newContent = document.getElementById('as-edit-content-'+id).value.trim();
+  const newDue = document.getElementById('as-edit-due-'+id).value;
+  if(!newContent){ alert('업무 내용을 입력하세요'); return; }
+  if(!newDue){ alert('처리 기한을 입력하세요'); return; }
+  await apiPost({action:'update', sheet:'지시업무', id:id, field:'content', value:newContent});
+  await apiPost({action:'update', sheet:'지시업무', id:id, field:'due', value:newDue});
+  await loadAssignList();
+}
+
+async function delAssign(id){
+  await apiPost({action:'delete', sheet:'지시업무', id:id});
+  await loadAssignList();
 }
 
 async function loadReceivedAssigns(){
